@@ -1,0 +1,2 @@
+run_id,scenario,db,users,hot_skus,initial_stock,late_fail_prob,started_at,ended_at,duration_s,orders_ok,rolled_back,abort,compensations,stale_reads,oversell_events,orphan_payments
+2025-11-05T11:49:17.860772Z_postgres,rollback,postgres,100,50,50,0.2,2025-11-05T11:48:47.794982Z,2025-11-05T11:49:17.860772Z,30,1776,45635,8406,0,0,0,0

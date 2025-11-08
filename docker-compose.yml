@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-testdb}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - db-net
+
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-root}
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      # Use mongosh to ping the server with auth
+      test: [
+        "CMD-SHELL",
+        "mongosh --quiet --eval 'db.adminCommand(\"ping\")' -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin >/dev/null 2>&1"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    networks:
+      - db-net
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra41
+    restart: unless-stopped
+    ports:
+      - "9042:9042" # CQL
+    environment:
+      CASSANDRA_CLUSTER_NAME: university_cluster
+      CASSANDRA_NUM_TOKENS: 256
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      # Authentication is disabled by default for simplicity while benchmarking
+      # To enable, add: CASSANDRA_AUTHENTICATOR=PasswordAuthenticator and seed a password
+    volumes:
+      - cassandradata:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SHOW VERSION' 127.0.0.1 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+    networks:
+      - db-net
+
+volumes:
+  pgdata:
+  mongodata:
+  cassandradata:
+
+networks:
+  db-net:
+    name: db-net
+    driver: bridge
+

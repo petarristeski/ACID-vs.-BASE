@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,page_size,started_at,ended_at,engine,throughput_reads_per_s,errors,latency_ms,counts
+2025-11-05T16:48:05.418330Z_mongodb,social_media_feed_reads,mongodb,64,20.01,50,2025-11-05T16:47:44.437990Z,2025-11-05T16:48:05.418330Z,mongodb,4663.6,0,"{'feed_read': {'p50': 12.61, 'p95': 25.47}}",{'reads': 93302}

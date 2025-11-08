@@ -1,0 +1,47 @@
+[
+  {
+    "engine": "mongodb",
+    "duration_s": 20.01,
+    "throughput_reads_per_s": 4657.3,
+    "errors": 0,
+    "latency_ms": {
+      "feed_read": {
+        "p50": 12.64,
+        "p95": 25.5
+      }
+    },
+    "counts": {
+      "reads": 559040
+    }
+  },
+  {
+    "engine": "postgres",
+    "duration_s": 20.0,
+    "throughput_reads_per_s": 15197.6,
+    "errors": 0,
+    "latency_ms": {
+      "feed_read": {
+        "p50": 3.35,
+        "p95": 10.09
+      }
+    },
+    "counts": {
+      "reads": 1824168
+    }
+  },
+  {
+    "engine": "cassandra",
+    "duration_s": 19.99,
+    "throughput_reads_per_s": 2473.4,
+    "errors": 0,
+    "latency_ms": {
+      "feed_read": {
+        "p50": 23.13,
+        "p95": 47.53
+      }
+    },
+    "counts": {
+      "reads": 296744
+    }
+  }
+]

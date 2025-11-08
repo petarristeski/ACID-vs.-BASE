@@ -1,0 +1,2 @@
+run_id,scenario,db,users,initial_stock,duration_s,started_at,ended_at,cass_paid_orders,cass_available_end,cass_oversell_event,cass_throughput_succ_per_s,cass_latency_p50_ms,cass_latency_p95_ms,cass_oos_attempts,cass_fail
+2025-11-05T13:37:01.727034Z_cassandra,concurrent_orders_single_hot_sku,cassandra,200,1000,20,2025-11-05T13:36:41.058188Z,2025-11-05T13:37:01.727034Z,19601,523,True,980.05,131.0084170254413,337.3024169995915,0,0

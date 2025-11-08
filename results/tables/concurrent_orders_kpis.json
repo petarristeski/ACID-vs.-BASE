@@ -1,0 +1,43 @@
+{
+  "scenario": "concurrent_orders_single_hot_sku",
+  "initial_stock": 1000,
+  "duration_s": 20,
+  "users": 200,
+  "postgres": {
+    "paid_orders": 6000,
+    "qty_on_hand_end": 0,
+    "abort_rate": 0.5038401948544566,
+    "retries_total": 228752,
+    "throughput_succ_per_s": 50.0,
+    "latency_ms": {
+      "p50": 15.149895989452489,
+      "p95": 84.06145899789408
+    },
+    "oos_attempts": 183862,
+    "gave_up": 35390
+  },
+  "cassandra": {
+    "paid_orders": 118978,
+    "available_end": 523,
+    "oversell_event": true,
+    "throughput_succ_per_s": 991.4833333333332,
+    "latency_ms": {
+      "p50": 129.9566249945201,
+      "p95": 337.3024169995915
+    },
+    "oos_attempts": 0,
+    "fail": 0
+  },
+  "mongodb": {
+    "paid_orders": 6000,
+    "available_end": 0,
+    "oversell_event": false,
+    "throughput_succ_per_s": 50.0,
+    "latency_ms": {
+      "p50": 107.5422500143759,
+      "p95": 169.1400420095306
+    },
+    "oos_attempts": 202466,
+    "fail": 0
+  }
+}

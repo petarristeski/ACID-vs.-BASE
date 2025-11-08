@@ -1,0 +1,2 @@
+run_id,scenario,db,users,initial_stock,duration_s,started_at,ended_at,mongo_paid_orders,mongo_available_end,mongo_oversell_event,mongo_throughput_succ_per_s,mongo_latency_p50_ms,mongo_latency_p95_ms,mongo_oos_attempts,mongo_fail
+2025-11-05T13:25:42.392291Z_mongodb,concurrent_orders_single_hot_sku,mongodb,200,1000,20,2025-11-05T13:25:22.261398Z,2025-11-05T13:25:42.392291Z,1000,0,False,50.0,109.3718744959915,174.26516601699404,33290,0

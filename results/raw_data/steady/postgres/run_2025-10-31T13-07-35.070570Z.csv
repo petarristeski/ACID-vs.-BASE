@@ -1,0 +1,2 @@
+run_id,scenario,db,sku,customers,initial_stock,orders_per_user,concurrency,failure_rate,started_at,ended_at,duration_s,ok,failed,out_of_stock,total,tps
+2025-10-31T13:07:35.070570Z_postgres,steady,postgres,SKU-STEADY-1,2000,1000,1,100,0.1,2025-10-31T13:07:28.508454Z,2025-10-31T13:07:35.070570Z,6.529359958003624,0,0,2000,2000,306.30873667003453

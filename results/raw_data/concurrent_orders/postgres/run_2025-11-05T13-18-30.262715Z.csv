@@ -1,0 +1,2 @@
+run_id,scenario,db,users,initial_stock,duration_s,started_at,ended_at,pg_paid_orders,pg_qty_on_hand_end,pg_abort_rate,pg_retries_total,pg_throughput_succ_per_s,pg_latency_p50_ms,pg_latency_p95_ms,pg_oos_attempts,pg_gave_up
+2025-11-05T13:18:30.262715Z_postgres,concurrent_orders_single_hot_sku,postgres,200,1000,20,2025-11-05T13:18:09.569943Z,2025-11-05T13:18:30.262715Z,1000,0,0.5195635024980279,39518,50.0,15.149895989452489,85.90629199170507,29399,6143

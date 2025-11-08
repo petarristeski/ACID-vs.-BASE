@@ -1,0 +1,364 @@
+% ACID vs BASE Benchmarks — Paper Template
+% Compile with: pdflatex paper.tex (repeat twice) or latexmk
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+
+% Better URLs
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue
+}
+
+% Table/number formatting
+\sisetup{round-mode=figures,round-precision=1}
+
+% Title
+\title{ACID vs BASE in Practice: Benchmarks across E\,-commerce, Social Media, and IoT}
+\author{Petar Risteski \\ AITMIR - INSPDP \\ \texttt{petar.risteski@mir.uist.edu.mk}}
+\date{12.11.2025}
+
+\begin{document}
+\maketitle
+\begin{center}
+  \includegraphics[width=0.22\textwidth]{univ_logo.jpg}
+\end{center}
+
+\begin{abstract}
+% 150--200 words.
+This work presents a comparative benchmark suite contrasting ACID and BASE design choices across three representative application domains: e\,-commerce, social media, and IoT. We implement realistic scenarios with correctness stress (late failure rollback, single hot SKU contention), mixed write/read social workloads, and write- and read-heavy IoT time-series patterns. The suite spans PostgreSQL (ACID), MongoDB, and Apache Cassandra (BASE), with unified CLI, metrics collection, and analysis. We report throughput, tail latency, and correctness KPIs (e.g., oversell and orphan-payment rates) under controlled concurrency and duration across identical hardware. Results indicate clear trade-offs: PostgreSQL provides strong correctness and predictable tails under contention, while BASE systems offer flexible schemas and horizontal scale with consistency caveats. We release the framework, methodology, and artifacts (plots, KPIs) to enable reproducibility and to facilitate informed system and data-model decisions.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+Choosing between ACID and BASE is not just a theory question. Teams face it when they design order flows, feeds, and time‑series pipelines. The trade‑offs show up as concrete user outcomes: oversold items, missing read‑your‑write reads, long tail latencies, or slower ingest. While there is a lot of discussion in the literature, engineers still need numbers on realistic tasks to guide decisions.
+
+This paper presents a small, reproducible benchmark suite that compares PostgreSQL (ACID), MongoDB, and Cassandra (BASE‑oriented) across three domains: e\,-commerce, social media, and IoT. Each domain has two focused scenarios that reflect common patterns (e.g., late‑failure rollback, a single hot SKU, concurrent social actions with immediate reads, global feed reads, high‑rate sensor ingest, and time‑series range queries). For each scenario we report throughput, median and 95th‑percentile latency, and correctness signals such as oversell, orphan payments, and read‑your‑writes.
+
+Our contributions are: (1) a simple, open set of runners and analysis tools with a unified CLI, (2) comparable results for three widely used engines on realistic tasks, and (3) plots and KPIs that make the trade‑offs visible. We aim for clarity over micro‑optimizations: straightforward schemas, minimal tuning, and repeatable defaults so that others can reproduce the results or extend the suite.
+
+\section{Related Work}
+\label{sec:related}
+The ACID vs. BASE discussion has a few key guides. Pritchett explains BASE as a practical way to keep systems available and scalable by allowing temporary inconsistencies \cite{pritchett2008base}. Brewer clarifies CAP and notes that partitions do happen, so systems need a plan for what to give up during a partition \cite{brewer2010cap}. Abadi adds PACELC: even without a partition, we often trade latency and efficiency for stronger consistency (or the other way around) \cite{abadi2012pacelc}. Our benchmarks fit into this space: we measure correctness signals (oversell, orphan payments, read‑your‑writes) together with throughput and tail latency.
+
+On the BASE side, Dynamo shows how to keep a key‑value store always writeable and resolve conflicts later \cite{decandia2007dynamo}. Vogels explains eventual consistency as a deliberate design choice \cite{vogels2009eventually}. These ideas connect to our social‑media workload, where we stress duplicate‑like handling and read‑your‑writes under high concurrency.
+
+On the strong‑consistency side, Spanner shows that global transactions are possible with the right clock and replication design \cite{corbett2012spanner}. Megastore offers a middle ground with small transactional groups \cite{baker2011megastore}. This perspective informs our e\,-commerce scenarios: late‑failure rollback and a single hot SKU put pressure on transaction handling, retries, and tail latency.
+
+Finally, Bailis et al. define which transactional guarantees you can keep while staying highly available (HATs) \cite{bailis2013hat}. Brewer later discusses practical patterns that combine availability with useful consistency \cite{brewer2012pushingcap}. Our work complements these papers with hands‑on measurements across PostgreSQL (ACID), MongoDB, and Cassandra on e\,-commerce, social media, and IoT tasks, so readers can see the trade‑offs in numbers and not only in theory.
+
+\section{Methodology}
+\label{sec:method}
+Our goal is to compare ACID and BASE choices on tasks that look like real systems. We focus on three domains and run the same workflow for PostgreSQL (ACID), MongoDB, and Cassandra (BASE‑oriented):
+
+\paragraph{Scenarios}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{E\,-commerce}. (1) \emph{Rollback}: users place orders with a chance of a late failure that forces rollback/compensation. We track oversell and orphan payments. (2) \emph{Concurrent orders}: everyone races for one “hot” SKU. PostgreSQL uses transactions with retries; BASE systems show their typical contention behavior.
+  \item \textbf{Social media}. (1) \emph{Concurrent writes}: a mix of post, like, comment, and immediate reads to check read‑your‑writes (RYW). We also count duplicate‑like rejections. (2) \emph{Feed reads}: many readers scan the global recent‑posts feed with a fixed page size.
+  \item \textbf{IoT}. (1) \emph{Sensor writes}: high‑throughput point inserts. (2) \emph{Time‑series reads}: range queries over recent windows after seeding timeseries data.
+\end{itemize}
+
+\paragraph{Design and adapters} For each scenario we implement small, engine‑specific adapters: SQL schema and transactions for PostgreSQL; collections and time‑series options for MongoDB; partition‑friendly tables and prepared statements for Cassandra. We keep the logic minimal and readable so that behavior differences mostly come from the engines, not from our code.
+
+\paragraph{Metrics} We report throughput (operations or points per second), latency (p50/p95 in milliseconds), and scenario‑specific correctness:
+\begin{itemize}[leftmargin=*]
+  \item \emph{Rollback}: oversell events, orphan payments, stale reads (if applicable).
+  \item \emph{Concurrent orders}: success/sec and tail latency under contention; out‑of‑stock attempts.
+  \item \emph{Social writes}: overall ops/sec, RYW success rate, duplicate‑like rejects; per‑operation latency (create, like, comment, read).
+  \item \emph{Feed reads}: reads/sec and read latency.
+  \item \emph{IoT writes}: points/sec and write latency.
+  \item \emph{Time‑series reads}: reads/sec, read latency, and average points per read for the chosen window.
+\end{itemize}
+Latency p50 is the median; p95 is the 95th percentile (sorted‑index approach). Throughput is total successful operations divided by wall‑clock duration.
+
+\paragraph{Run pipeline} Each benchmark follows the same steps:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Load test}: run workers for a fixed duration and concurrency (e.g., 20\,s, 64 threads). Commands use the project CLI, e.g., \texttt{python app.py load\_tester social\_media concurrent\_writes ...}.
+  \item \textbf{Merge}: collect per‑run JSONL/CSV into one CSV: \texttt{python app.py metrics merge --in ... --out ...}.
+  \item \textbf{Stats}: compute KPIs per engine and write JSON: \texttt{python app.py analysis stats ...}.
+  \item \textbf{Viz}: render plots under \texttt{results/plots}: \texttt{python app.py analysis viz ...}.
+\end{enumerate}
+
+\paragraph{Repeatability and randomness} We fix a random seed where it matters (e.g., device ID sampling) and repeat runs (e.g., 3 repeats) to smooth noise by averaging throughput/latency and summing counts. We avoid engine‑specific tuning beyond reasonable defaults (e.g., a simple pooling setting for PostgreSQL when needed) to keep comparisons fair.
+
+\paragraph{What we do not measure} We use single‑node setups without replication, so cross‑region behavior and failover are out of scope. We do not include error‑rate plots; we still track error counts to catch obvious issues. Our goal is to keep the suite focused and reproducible rather than exhaustive.
+
+\section{Experimental Setup}
+\label{sec:setup}
+\paragraph{Hardware} All runs execute on a single workstation (no replication): Apple M2 Pro (ARM64) with 32\,GB RAM and internal SSD. Using one box simplifies fairness across engines.
+
+\paragraph{Software} We use Python (3.10+), recent stable PostgreSQL, MongoDB, and Cassandra server releases, and their standard Python drivers. The CLI and analysis live in this repository. Exact versions can be captured alongside results.
+
+\paragraph{Configuration and env vars} We connect to local databases using environment variables:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{PG\_DSN} (PostgreSQL DSN), e.g., \texttt{dbname=iot user=postgres host=127.0.0.1}.
+  \item \texttt{MONGO\_URI}, e.g., \texttt{mongodb://localhost:27017}.
+  \item \texttt{CASS\_HOSTS}, comma‑separated, e.g., \texttt{127.0.0.1}.
+\end{itemize}
+We keep database setups simple: one node per engine, default configs unless the scenario requires something basic (e.g., creating a time‑series collection in MongoDB, or a primary‑key table and indexes in PostgreSQL). For contentious e\,-commerce orders, PostgreSQL uses transactions with retries; Cassandra uses a straightforward read‑then‑write; MongoDB uses atomic updates on a single document where appropriate.
+
+\paragraph{Workload parameters} Unless noted otherwise, we use 64 workers and 20\,s per run for social media and IoT scenarios; e\,-commerce rollback often uses 100 users and 30\,s (we keep the defaults from the CLI). We repeat each engine 3 times per scenario. Key knobs:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{E\,-commerce}: users, duration, number of hot SKUs, initial stock, late‑failure probability; or initial stock for the single hot SKU.
+  \item \textbf{Social media}: concurrency, duration, and feed page size (e.g., 50).
+  \item \textbf{IoT writes}: concurrency, duration, number of devices, and batch size (default 1).
+  \item \textbf{IoT time‑series}: devices, points per device for seeding, and query window (seconds).
+\end{itemize}
+
+\paragraph{Seeding} Workloads that need data seed it automatically:
+\begin{itemize}[leftmargin=*]
+  \item Social feed reads pre‑populate a recent‑posts feed for each engine.
+  \item IoT time‑series seeds \texttt{devices \(\times\)} \texttt{points\_per\_device} for the current day, then runs range queries.
+\end{itemize}
+
+\paragraph{Data collection and analysis} Each load test writes a JSONL and CSV with scenario name, engine, timestamps, counts, and latency summaries. We merge per‑engine runs into a single CSV, compute KPIs (averages and sums by engine), and write a compact JSON for plotting. Plots are saved under \texttt{results/plots} and referenced directly in this paper.
+
+\section{Results}
+\label{sec:results}
+% Use plots from results/plots. Keep them slightly smaller but readable.
+
+\subsection{E\,-commerce}
+\subsubsection{Rollback (Late Failure)}
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/ecommerce/rollback_kpi_oversell.png}
+    \caption{Oversell rate}
+  \end{subfigure}
+  \begin{subfigure}[t]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/ecommerce/rollback_kpi_orphan.png}
+    \caption{Orphan payment rate}
+  \end{subfigure}
+  \begin{subfigure}[t]{0.32\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/ecommerce/rollback_kpi_stale.png}
+    \caption{Stale read rate}
+  \end{subfigure}
+  \caption{Rollback KPIs by engine.}
+  \label{fig:rollback-kpis}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{results/plots/ecommerce/rollback_counts_stacked.png}
+  \caption{Rollback operational counts (stacked).}
+  \label{fig:rollback-counts}
+\end{figure}
+
+\paragraph{Findings} Figure~\ref{fig:rollback-kpis} shows that PostgreSQL prevents oversell and orphan payments in our late‑failure flow. MongoDB also avoids oversell here, but both MongoDB and Cassandra show stale reads under write pressure (stale read rate close to 1.0 in our runs). PostgreSQL pays a cost in aborts and retries (about 13\% abort rate, Figure~\ref{fig:rollback-counts} also shows large rollback counts), which is the expected trade‑off for strong transactional semantics.
+
+\subsubsection{Concurrent Orders (Single Hot SKU)}
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/ecommerce/concurrent_perf_throughput.png}
+    \caption{Throughput (success/sec)}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/ecommerce/concurrent_perf_latency.png}
+    \caption{Latency (p50/p95)}
+  \end{subfigure}
+  \caption{Concurrent orders performance.}
+  \label{fig:co-perf}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{results/plots/ecommerce/concurrent_counts_success_oos.png}
+  \caption{Successful vs out-of-stock attempts.}
+  \label{fig:co-counts}
+\end{figure}
+
+\paragraph{Findings} In the single hot‑SKU race, Cassandra reports very high success/sec (about 992\,ops/s) but also oversells (inventory goes negative and the oversell indicator is true in the KPIs). PostgreSQL and MongoDB cap at roughly 50\,ops/s because they honor the single‑item limit: all extra attempts become out‑of‑stock or abort/retry. Latency tails are also different: PostgreSQL has a lower p95 than MongoDB, consistent with retries on short transactions; Cassandra is faster than MongoDB here but the throughput advantage comes with oversell.
+\subsection{Social Media}
+\subsubsection{Concurrent Writes}
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/social_media/social_throughput.png}
+    \caption{Throughput (ops/sec)}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/social_media/social_ryw.png}
+    \caption{Read-your-write success rate}
+  \end{subfigure}
+  \caption{Social media write-heavy overview.}
+  \label{fig:social-overview}
+\end{figure*}
+
+\paragraph{Findings} PostgreSQL achieves the highest mixed throughput (about 4.8k ops/s) with the lowest p50/p95 across operations. Cassandra and MongoDB are in the 2.0k ops/s range, with higher read latencies (Cassandra's read p95 is the highest tail). Read‑your‑writes (RYW) is 1.0 for all engines in this single‑node setup, which is expected. We also see some duplicate‑like rejections (more on PostgreSQL), reflecting how each engine enforces uniqueness in our simple model.
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.24\textwidth}\centering\includegraphics[width=\linewidth]{results/plots/social_media/social_create_post_latency.png}\caption{Create post}\end{subfigure}
+  \begin{subfigure}[t]{0.24\textwidth}\centering\includegraphics[width=\linewidth]{results/plots/social_media/social_like_latency.png}\caption{Like}\end{subfigure}
+  \begin{subfigure}[t]{0.24\textwidth}\centering\includegraphics[width=\linewidth]{results/plots/social_media/social_comment_latency.png}\caption{Comment}\end{subfigure}
+  \begin{subfigure}[t]{0.24\textwidth}\centering\includegraphics[width=\linewidth]{results/plots/social_media/social_read_latency.png}\caption{Read}\end{subfigure}
+  \caption{Latency per operation (p50/p95).}
+  \label{fig:social-op-lat}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{results/plots/social_media/social_counts_stacked.png}
+  \caption{Operation counts by engine (stacked).}
+  \label{fig:social-counts}
+\end{figure}
+
+\subsubsection{Feed Reads}
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/social_media/social_feed_reads_throughput.png}
+    \caption{Throughput (reads/sec)}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/social_media/social_feed_reads_latency.png}
+    \caption{Latency (p50/p95)}
+  \end{subfigure}
+  \caption{Global feed read performance.}
+  \label{fig:social-feed}
+\end{figure*}
+
+\paragraph{Findings} For read‑only global feed scans, PostgreSQL serves about 15.2k reads/s with a p50 near 3.4\,ms and p95 near 10\,ms. MongoDB reaches about 4.7k reads/s (p50 around 12.6\,ms), while Cassandra is around 2.5k reads/s (p50 around 23\,ms). The gap aligns with engine defaults and the simple global‑feed query shape we use.
+
+\subsection{IoT}
+\subsubsection{Sensor Writes}
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/iot/iot_sensor_writes_throughput.png}
+    \caption{Throughput (points/sec)}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/iot/iot_sensor_writes_latency.png}
+    \caption{Latency (p50/p95)}
+  \end{subfigure}
+  \caption{IoT sensor ingest performance.}
+  \label{fig:iot-writes}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{results/plots/iot/iot_sensor_writes_counts.png}
+  \caption{Total points ingested by engine.}
+  \label{fig:iot-writes-counts}
+\end{figure}
+
+\paragraph{Findings} On write‑heavy ingest, PostgreSQL and Cassandra push 8.3k and 7.1k points/s with sub‑10\,ms median latencies. Our MongoDB run shows many batch errors when using a time‑series collection with non‑\texttt{Date} time fields (about 1.3k points/s with a 0.75 error rate in the raw counts). When the collection uses a proper \texttt{Date} time field or a normal collection, MongoDB ingest improves; we keep the result here to be transparent about configuration sensitivity.
+
+\subsubsection{Time-series Reads}
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/iot/iot_time_series_throughput.png}
+    \caption{Throughput (reads/sec)}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{results/plots/iot/iot_time_series_latency.png}
+    \caption{Latency (p50/p95)}
+  \end{subfigure}
+  \caption{IoT time-series range reads.}
+  \label{fig:iot-ts}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{results/plots/iot/iot_time_series_avg_points_per_read.png}
+  \caption{Average points per read by engine.}
+  \label{fig:iot-ts-avg}
+\end{figure}
+
+\paragraph{Findings} For range reads over recent windows, PostgreSQL reaches about 17.8k reads/s with a p50 near 3\,ms and p95 near 8\,ms. Cassandra is around 6.5k reads/s (p50 about 9\,ms), and MongoDB is about 0.6k reads/s (p50 about 101\,ms). Cassandra’s partitioned table design and prepared statements help here; PostgreSQL benefits from an index on \texttt{(device\_id, ts)} and sequential scans along clustered keys.
+
+\subsection{Summary Tables}
+% Optional consolidated KPI tables for quick comparison.
+\begin{table}[t]
+  \centering
+  \caption{E\,-commerce concurrent orders (illustrative).}
+  \label{tab:co-kpis}
+  \begin{tabular}{l S S S}
+    \toprule
+    Engine & {Success/sec} & {p50 [ms]} & {p95 [ms]} \\
+    \midrule
+    Postgres & 50.0 & 15.15 & 84.06 \\
+    MongoDB  & 50.0 & 107.54 & 169.14 \\
+    Cassandra & 991.5 & 129.96 & 337.30 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Discussion}
+\label{sec:discussion}
+Our results highlight a simple theme: if you want strong correctness under contention, you often pay with aborts/retries and sometimes lower throughput; if you want high write availability and simple paths, you may accept anomalies unless you add extra logic.
+
+\paragraph{E\,-commerce} PostgreSQL avoids oversell in both rollback and hot‑SKU scenarios, but you see aborts and retries during peaks. MongoDB also avoids oversell in our rollback flow and caps throughput on the hot SKU by returning out‑of‑stock quickly. Cassandra achieves very high “success/sec” on the hot SKU because it does not serialize the decrement the same way, so it oversells: the metric looks great, but the outcome is wrong for most shops. This is the core ACID vs. BASE trade‑off: correctness first vs. availability/speed first, unless you build extra safeguards.
+
+\paragraph{Social media} On the write‑heavy mix, PostgreSQL leads in throughput and latency, with RYW satisfied for this single‑node setup across all engines. Cassandra’s tail read latency is higher in this mix, which matters for perceived feed smoothness. The difference in duplicate‑like rejections reflects how each engine enforces uniqueness in our simple model; a production system would likely add explicit constraints or idempotency keys.
+
+\paragraph{IoT} For high‑rate ingest, PostgreSQL and Cassandra deliver similar sub‑10\,ms medians and healthy throughput on a single node. MongoDB can also ingest at high rates, but configuration matters: time‑series collections require a \texttt{Date} time field, and wrong types can lead to many failed batches (as seen in our raw counts). For time‑series reads, PostgreSQL’s indexed range scans and Cassandra’s partitioned layout both perform well; MongoDB is slower on our global time‑bucket shape.
+
+\paragraph{What this means in practice} If the workload has tight integrity requirements under contention (money, inventory), ACID transactions with retries are the safer default. If the workload can tolerate temporary anomalies and uses conflict resolution or compensations, BASE‑style designs can give higher headroom. For read‑heavy feeds and time‑series, simple schemas and the right keys (partition, clustering, and indexes) dominate. The suite is small by design; it should be extended (e.g., replication levels, multi‑region, different contention patterns) for a complete view, but it already makes the main trade‑offs visible.
+
+\section{Conclusion}
+\label{sec:conclusion}
+This benchmark suite puts ACID vs. BASE trade‑offs into practical terms across e\,-commerce, social media, and IoT. On tasks that require strict integrity under contention (orders and inventory), PostgreSQL’s transactions prevent oversell and keep behavior predictable, at the cost of aborts and retries. When availability and simple fast paths are the priority, BASE‑style designs can deliver higher headroom but need extra safeguards to avoid anomalies. For read‑heavy and time‑series patterns, straightforward schemas and the right keys matter more than any single feature.
+
+Our goal was clarity and reproducibility over micro‑tuning. The code is small, the scenarios are easy to run, and the outputs (KPIs and plots) make comparisons visible. We hope this helps teams choose defaults and know when to pay for stronger guarantees.
+
+Future work includes running with replication and different read concerns/consistency levels, exploring multi‑region topologies and failure injection, varying contention shapes and data distributions, and adding more workloads (e.g., materialized feeds or per‑user timelines). We also plan to automate environment capture (DB versions and settings) alongside results to simplify peer replication of the numbers.
+
+\section*{References}
+\begin{thebibliography}{99}
+
+\bibitem{pritchett2008base}
+Dan Pritchett. BASE: An ACID Alternative. ACM Queue, 6(3), 2008. URL: \url{https://queue.acm.org/detail.cfm?id=1394128}.
+
+\bibitem{brewer2010cap}
+Eric A. Brewer. A Certain Freedom: Thoughts on the CAP Theorem. Communications of the ACM, 53(5), 2010. DOI: \href{https://doi.org/10.1145/1835698.1835701}{10.1145/1835698.1835701}.
+
+\bibitem{abadi2012pacelc}
+Daniel J. Abadi. Consistency Tradeoffs in Modern Distributed Database System Design: CAP Is Only Part of the Story. IEEE Computer, 45(2):37--42, 2012. URL: \url{http://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf}.
+
+\bibitem{vogels2009eventually}
+Werner Vogels. Eventually Consistent. Communications of the ACM, 52(1), 2009. DOI: \href{https://doi.org/10.1145/1435417.1435432}{10.1145/1435417.1435432}.
+
+\bibitem{decandia2007dynamo}
+Giuseppe DeCandia, Deniz Hastorun, Madan Jampani, Gunavardhan Kakulapati, Avinash Lakshman, Alex Pilchin, Swaminathan Sivasubramanian, Peter Vosshall, and Werner Vogels. Dynamo: Amazon's Highly Available Key-Value Store. In Proceedings of the 21st ACM Symposium on Operating Systems Principles (SOSP), pages 205--220, 2007. URL: \url{https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}.
+
+\bibitem{corbett2012spanner}
+James C. Corbett, Jeffrey Dean, Michael Epstein, Andrew Fikes, Christopher Frost, et al. Spanner: Google's Globally-Distributed Database. In 10th USENIX Symposium on Operating Systems Design and Implementation (OSDI), pages 251--264, 2012. URL: \url{https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett}.
+
+\bibitem{baker2011megastore}
+Jason Baker, Chris Bond, James C. Corbett, JJ Furman, Andrey Khandelwal, et al. Megastore: Providing Scalable, Highly Available Storage for Interactive Services. In CIDR, pages 223--234, 2011. URL: \url{http://www.cidrdb.org/cidr2011/Papers/CIDR11_Paper32.pdf}.
+
+\bibitem{bailis2013hat}
+Peter Bailis, Aaron Davidson, Alan Fekete, Ali Ghodsi, Martin Kleppmann, and Ion Stoica. Highly Available Transactions: Virtues and Limitations. Proceedings of the VLDB Endowment, 7(3):181--192, 2013. URL: \url{https://www.vldb.org/pvldb/vol7/p181-bailis.pdf}.
+
+\bibitem{brewer2012pushingcap}
+Eric A. Brewer. Pushing the CAP: Strategies for Consistency and Availability. IEEE Computer, 45(2), 2012. DOI: \href{https://doi.org/10.1109/MC.2012.37}{10.1109/MC.2012.37}.
+
+\end{thebibliography}
+
+\end{document}

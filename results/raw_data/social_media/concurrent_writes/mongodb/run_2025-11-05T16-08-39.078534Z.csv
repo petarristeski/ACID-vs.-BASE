@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,started_at,ended_at,engine,throughput_ops_per_s,errors,dup_like_rejects,ryw_success_rate,latency_ms,counts
+2025-11-05T16:08:39.078534Z_mongodb,social_media_concurrent_writes,mongodb,64,20.01,2025-11-05T16:08:18.879533Z,2025-11-05T16:08:39.078534Z,mongodb,2001.0,0,1,1.0,"{'create_post': {'p50': 11.14, 'p95': 23.01}, 'like': {'p50': 10.41, 'p95': 21.22}, 'comment': {'p50': 10.4, 'p95': 21.43}, 'read': {'p50': 21.62, 'p95': 36.75}}","{'posts': 6494, 'likes': 15802, 'comments': 9707, 'reads': 8044}"

@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,devices,points_per_device,window_seconds,started_at,ended_at,engine,throughput_reads_per_s,errors,latency_ms,counts
+2025-11-05T20:49:46.247025Z_mongodb,iot_time_series,mongodb,64,20.05,10000,50,30,2025-11-05T20:49:22.577770Z,2025-11-05T20:49:46.247025Z,mongodb,609.5,0,"{'ts_read': {'p50': 100.42, 'p95': 187.4}}","{'reads': 12222, 'points': 196878}"

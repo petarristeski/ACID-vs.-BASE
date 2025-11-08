@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,devices,points_per_device,window_seconds,started_at,ended_at,engine,throughput_reads_per_s,errors,latency_ms,counts
+2025-11-05T21:36:06.657033Z_cassandra,iot_time_series,cassandra,64,19.98,10000,50,30,2025-11-05T21:35:02.249236Z,2025-11-05T21:36:06.657033Z,cassandra,6285.9,0,"{'ts_read': {'p50': 9.2, 'p95': 14.84}}","{'reads': 125581, 'points': 0}"

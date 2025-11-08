@@ -1,0 +1,2 @@
+run_id,scenario,db,users,hot_skus,initial_stock,late_fail_prob,started_at,ended_at,duration_s,orders_ok,rolled_back,abort,compensations,stale_reads,oversell_events,orphan_payments
+2025-11-05T12:05:58.256611Z_mongodb,rollback,mongodb,100,50,50,0.2,2025-11-05T12:05:24.507573Z,2025-11-05T12:05:58.256611Z,30,8689,0,0,9708,18397,0,0

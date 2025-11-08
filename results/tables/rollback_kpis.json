@@ -1,0 +1,38 @@
+{
+  "oversell_rate": {
+    "mongodb": 0.0,
+    "postgres": 0.0,
+    "cassandra": 1.0
+  },
+  "orphan_payment_rate": {
+    "mongodb": 0.0,
+    "postgres": 0.0,
+    "cassandra": 0.0
+  },
+  "stale_read_rate": {
+    "mongodb": 1.0,
+    "postgres": 0.0,
+    "cassandra": 1.0
+  },
+  "abort_rate": {
+    "mongodb": 0.0,
+    "postgres": 0.13091757001997878,
+    "cassandra": 0.0
+  },
+  "counts": {
+    "mongo_stale_reads": 109078,
+    "mongo_orders_ok": 51190,
+    "mongo_compensations": 57888,
+    "pg_orders_ok": 10690,
+    "pg_rolled_back": 312082,
+    "pg_abort": 48622,
+    "cass_stale_reads": 94348,
+    "cass_orders_ok": 75684,
+    "cass_compensations": 18664
+  },
+  "totals": {
+    "mongodb": 109078,
+    "postgres": 371394,
+    "cassandra": 94348
+  }
+}

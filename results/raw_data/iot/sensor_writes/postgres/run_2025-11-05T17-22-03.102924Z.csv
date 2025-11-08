@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,devices,batch_size,started_at,ended_at,engine,throughput_points_per_s,error_rate,latency_ms,counts
+2025-11-05T17:22:03.102924Z_postgres,iot_sensor_writes,postgres,64,20.01,100000,1,2025-11-05T17:21:43.021264Z,2025-11-05T17:22:03.102924Z,postgres,8452.2,0.0,"{'p50': 7.33, 'p95': 9.84}","{'ok_points': 169156, 'batches': 169156, 'errors': 0}"

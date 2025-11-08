@@ -1,0 +1,2 @@
+run_id,scenario,db,sku,customers,initial_stock,orders_per_user,concurrency,failure_rate,started_at,ended_at,duration_s,ok,failed,out_of_stock,total,tps
+2025-10-31T13:39:10.000487Z_cassandra,steady,cassandra,SKU-STEADY-1,2000,1000,1,30,0.1,2025-10-31T13:39:00.387731Z,2025-10-31T13:39:10.000487Z,9.579741124995053,998,154,846,1998,208.5651348956501

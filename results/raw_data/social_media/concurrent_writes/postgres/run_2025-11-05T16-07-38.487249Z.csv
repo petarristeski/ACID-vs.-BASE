@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,started_at,ended_at,engine,throughput_ops_per_s,errors,dup_like_rejects,ryw_success_rate,latency_ms,counts
+2025-11-05T16:07:38.487249Z_postgres,social_media_concurrent_writes,postgres,64,20.02,2025-11-05T16:07:18.149878Z,2025-11-05T16:07:38.487249Z,postgres,4915.7,0,4,1.0,"{'create_post': {'p50': 6.85, 'p95': 10.27}, 'like': {'p50': 6.9, 'p95': 10.26}, 'comment': {'p50': 6.93, 'p95': 10.26}, 'read': {'p50': 4.91, 'p95': 7.76}}","{'posts': 15396, 'likes': 39653, 'comments': 23523, 'reads': 19835}"

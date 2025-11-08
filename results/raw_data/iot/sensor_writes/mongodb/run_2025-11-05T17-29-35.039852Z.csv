@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,devices,batch_size,started_at,ended_at,engine,throughput_points_per_s,error_rate,latency_ms,counts
+2025-11-05T17:29:35.039852Z_mongodb,iot_sensor_writes,mongodb,64,20.0,100000,1,2025-11-05T17:29:14.986338Z,2025-11-05T17:29:35.039852Z,mongodb,5359.7,0.0,"{'p50': 10.99, 'p95': 22.08}","{'ok_points': 107218, 'batches': 107218, 'errors': 0}"

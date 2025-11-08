@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,page_size,started_at,ended_at,engine,throughput_reads_per_s,errors,latency_ms,counts
+2025-11-05T17:02:39.542130Z_cassandra,social_media_feed_reads,cassandra,64,20.0,50,2025-11-05T17:02:02.275412Z,2025-11-05T17:02:39.542130Z,cassandra,2505.1,0,"{'feed_read': {'p50': 22.81, 'p95': 46.51}}",{'reads': 50111}

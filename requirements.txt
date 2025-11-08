@@ -1,0 +1,7 @@
+psycopg2-binary>=2.9
+pymongo>=4.5
+cassandra-driver>=3.28
+typer>=0.9
+pandas>=2.0
+matplotlib>=3.7
+seaborn>=0.13

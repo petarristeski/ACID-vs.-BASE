@@ -1,0 +1,2 @@
+run_id,scenario,db,concurrency,duration_s,started_at,ended_at,engine,throughput_ops_per_s,errors,dup_like_rejects,ryw_success_rate,latency_ms,counts
+2025-11-05T16:11:22.273554Z_cassandra,social_media_concurrent_writes,cassandra,64,20.1,2025-11-05T16:09:58.084506Z,2025-11-05T16:11:22.273554Z,cassandra,2055.7,0,0,1.0,"{'create_post': {'p50': 9.94, 'p95': 16.29}, 'like': {'p50': 9.94, 'p95': 15.82}, 'comment': {'p50': 9.94, 'p95': 16.24}, 'read': {'p50': 19.99, 'p95': 81.6}}","{'posts': 6489, 'likes': 16615, 'comments': 9928, 'reads': 8277}"
